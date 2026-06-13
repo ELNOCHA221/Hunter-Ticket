@@ -66,7 +66,7 @@ Al entrar a Discord, aparece una pequeña ventana flotante que muestra el estado
 
 ### Disclaimer
 
-> **Este proyecto es con fines educativos y de investigación.** El desarrollador de Hunter Ticket no se hace responsable de lo que hagas con esta herramienta. Si decides usarla, hazlo bajo tu propio riesgo. No se ofrecen garantías de funcionamiento, seguridad ni indetectabilidad.
+> **Este proyecto es con fines educativos y de investigación.**El desarrollador de Hunter Ticket no se hace responsable de lo que hagas con esta herramienta. Si decides usarla, hazlo bajo tu propio riesgo. No se ofrecen garantías de funcionamiento, seguridad ni indetectabilidad.
 > Al utilizar **Hunter Ticket**, aceptas que lo haces bajo tu propio riesgo y discreción.
 
 ## Diseño de Interfaz
@@ -83,6 +83,8 @@ La interfaz gráfica de la extensión (popup, overlay y estilos) fue diseñada c
 
 Este proyecto está bajo la licencia MIT. Consulta el archivo `LICENSE` para más detalles.
 
-## Desarrollador principal
+## Integrantes principales
 
-- BOTX
+- BOTX (Desarrollador principal)
+- Claude AI (Diseño de Interfaz)
+- Shadomoon.net (Sugerencias y apoyo) 
