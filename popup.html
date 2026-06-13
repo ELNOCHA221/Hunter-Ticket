@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hunter Ticket</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="header-left">
+        <span class="logo-icon">🎯</span>
+        <div class="header-text">
+          <h1>Hunter Ticket</h1>
+          <span class="version">v1.0.0</span>
+        </div>
+      </div>
+      <label class="toggle-switch" id="mainToggle">
+        <input type="checkbox" id="enabledToggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="status-banner" id="statusBanner">
+      <span class="status-dot"></span>
+      <span class="status-text" id="statusText">Monitoreando tickets...</span>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-number" id="claimCountStat">0</span>
+        <span class="stat-label">Claimed</span>
+      </div>
+    </div>
+
+    <!-- Auto-Reply -->
+    <div class="settings-section">
+      <h2 class="section-title">💬 Auto-Respuesta</h2>
+      <div class="setting-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="autoReplyEnabled">
+          <span class="checkmark"></span>
+          Enviar mensaje al reclamar
+        </label>
+      </div>
+      <div class="setting-row">
+        <label for="autoReplyMessage">Mensaje automático</label>
+        <textarea id="autoReplyMessage" placeholder="Ej: Hola! En qué puedo ayudarte?" rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- Notifications Section (PROMINENT) -->
+    <div class="settings-section highlight-section">
+      <h2 class="section-title">🔔 Notificaciones & Webhook</h2>
+      <div class="setting-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="soundEnabled">
+          <span class="checkmark"></span>
+          Sonido al reclamar
+        </label>
+      </div>
+      <div class="setting-row">
+        <label for="webhookUrl">Discord Webhook URL</label>
+        <div class="input-with-btn">
+          <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+          <button class="btn btn-small" id="testWebhookBtn">Probar</button>
+        </div>
+        <p class="input-hint">Recibe alertas en tu propio servidor cuando ganes un ticket.</p>
+        <button class="btn btn-secondary btn-full-width" id="sendReportBtn" style="margin-top: 10px;">📊 Enviar Reporte
+          Detallado</button>
+      </div>
+    </div>
+
+    <!-- Channel Patterns -->
+    <div class="settings-section">
+      <h2 class="section-title">🎫 Patrones de Canales</h2>
+      <div class="setting-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="useDefaultPatterns" checked>
+          <span class="checkmark"></span>
+          Usar patrones por defecto
+        </label>
+      </div>
+      <div class="default-list" id="defaultPatternsList">
+        <span class="list-title">Patrones incluidos:</span>
+        <div class="tag-list" id="patternTags"></div>
+      </div>
+      <div class="setting-row">
+        <label for="customPatterns">Patrones custom (uno por línea)</label>
+        <textarea id="customPatterns" placeholder="mi-patron-&#10;otro-patron-" rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- Claim Keywords -->
+    <div class="settings-section">
+      <h2 class="section-title">🔤 Keywords de Claim</h2>
+      <div class="setting-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="useDefaultKeywords" checked>
+          <span class="checkmark"></span>
+          Usar keywords predeterminadas
+        </label>
+      </div>
+      <div class="default-list" id="defaultKeywordsList">
+        <span class="list-title">Keywords incluidas:</span>
+        <div class="tag-list" id="keywordTags"></div>
+      </div>
+      <div class="setting-row">
+        <label for="customKeywords">Keywords custom (una por línea)</label>
+        <textarea id="customKeywords" placeholder="reclamar&#10;mi-keyword" rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- Advanced Settings -->
+    <div class="settings-section">
+      <h2 class="section-title">⚙️ Configuración Avanzada</h2>
+
+      <!-- Random Delay -->
+      <div class="setting-row">
+        <label>Humanización (Delay en SEGUNDOS)</label>
+        <div class="delay-inputs">
+          <input type="number" id="minDelay" placeholder="0.0" min="0" step="0.1">
+          <span>a</span>
+          <input type="number" id="maxDelay" placeholder="1.0" min="0" step="0.1">
+        </div>
+        <p class="input-hint">Ej: 0.1, 0.5, 1. Usar 0 para instantáneo.</p>
+      </div>
+
+      <!-- Whitelist -->
+      <div class="setting-row">
+        <label for="serverWhitelist">Whitelist Servidores (IDs, uno por línea)</label>
+        <textarea id="serverWhitelist" placeholder="ID del servidor (dejar vacío para todos)" rows="2"></textarea>
+      </div>
+
+      <!-- Modal Support -->
+      <div class="setting-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="autoModalEnabled">
+          <span class="checkmark"></span>
+          Auto-rellenar Modales 🛠️
+        </label>
+      </div>
+      <div class="setting-row">
+        <label for="autoModalMessage">Respuesta para modales</label>
+        <textarea id="autoModalMessage" placeholder="Razón del reclamo..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="settings-section">
+      <h2 class="section-title">📋 Actividad Reciente</h2>
+      <div class="log-container" id="logContainer">
+        <div class="log-empty">Sin actividad aún...</div>
+      </div>
+      <button class="btn btn-secondary" id="clearLogBtn">Limpiar Log</button>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions-row">
+      <button class="btn btn-primary" id="saveBtn">💾 Guardar</button>
+      <button class="btn btn-danger" id="resetBtn">🔄 Reset</button>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer-text"
+      style="font-size: 10px; color: #888; padding: 10px; text-align: center; border-top: 1px solid #333; margin-top: 15px;">
+      <b>ADVERTENCIA:</b> Uso exclusivamente para fines educativos. BTX DEVS no se responsabiliza por baneos o
+      inhabilitaciones de cuentas. El usuario asume todo el riesgo al utilizar esta herramienta.
+    </div>
+
+    <!-- Footer -->
+    <div class="popup-footer">
+      <span>Abre Discord Web para activar</span>
+    </div>
+  </div>
+
+  <div class="popup-footer">
+    Hunter Ticket v5 | by <span>BTX DEV</span>
+    <p class="footer-support">Soporte/Updates:No Disponibles</p>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="popup.js"></script>
+</body>
+
+</html>

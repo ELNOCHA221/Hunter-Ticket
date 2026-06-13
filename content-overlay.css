@@ -1,0 +1,338 @@
+/* TicketSniper Overlay Styles */
+
+#ticketsniper-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 280px;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 14px;
+  color: #e6edf3;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  z-index: 999999;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(0, 255, 136, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+#ticketsniper-overlay:hover {
+  border-color: rgba(0, 255, 136, 0.35);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    0 0 30px rgba(0, 255, 136, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+#ticketsniper-overlay.ts-flash {
+  animation: tsFlash 0.6s ease-out;
+}
+
+@keyframes tsFlash {
+  0% {
+    border-color: #00ff88;
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
+  }
+
+  100% {
+    border-color: rgba(0, 255, 136, 0.2);
+  }
+}
+
+/* Header */
+.ts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.06) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: grab;
+  user-select: none;
+}
+
+.ts-header:active {
+  cursor: grabbing;
+}
+
+.ts-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ts-icon {
+  font-size: 16px;
+  animation: tsPulse 2s infinite;
+}
+
+@keyframes tsPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.ts-title {
+  font-weight: 700;
+  font-size: 13px;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
+}
+
+.ts-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-status {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.ts-status.ts-active {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.ts-status.ts-paused {
+  background: rgba(255, 170, 0, 0.15);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.3);
+}
+
+.ts-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.ts-btn:hover {
+  background: rgba(0, 255, 136, 0.12);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+  transform: scale(1.05);
+}
+
+/* Body */
+.ts-body {
+  padding: 12px 14px;
+  max-height: 300px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.ts-body.ts-collapsed {
+  max-height: 0;
+  padding: 0 14px;
+  opacity: 0;
+}
+
+/* Stats */
+.ts-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ts-stat {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.ts-stat:hover {
+  background: rgba(0, 255, 136, 0.05);
+  border-color: rgba(0, 255, 136, 0.15);
+}
+
+.ts-stat-num {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  line-height: 1.2;
+}
+
+.ts-stat-label {
+  display: block;
+  font-size: 9px;
+  color: #6e7681;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Warning */
+.ts-warning {
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #ffaa00;
+  font-size: 10px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Log */
+.ts-log-container {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+}
+
+.ts-log-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6e7681;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.ts-log {
+  max-height: 140px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 136, 0.2) transparent;
+}
+
+.ts-log::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ts-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ts-log::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.2);
+  border-radius: 4px;
+}
+
+.ts-log-entry {
+  padding: 4px 8px;
+  margin-bottom: 3px;
+  font-size: 10px;
+  color: #8b949e;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 2px solid rgba(0, 255, 136, 0.15);
+  word-break: break-word;
+  animation: tsSlideIn 0.3s ease-out;
+}
+
+.ts-log-entry:first-child {
+  color: #c9d1d9;
+  border-left-color: #00ff88;
+  background: rgba(0, 255, 136, 0.04);
+}
+
+.ts-log-link {
+  cursor: pointer !important;
+  transition: all 0.2s;
+  pointer-events: auto !important;
+}
+
+.ts-log-link:hover {
+  background: rgba(0, 255, 136, 0.15) !important;
+  color: #00ff88 !important;
+  border-left-color: #00ff88 !important;
+}
+
+@keyframes tsSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Close button */
+.ts-btn-close:hover {
+  background: rgba(255, 68, 68, 0.2) !important;
+  border-color: rgba(255, 68, 68, 0.4) !important;
+  color: #ff4444 !important;
+}
+
+/* Floating mini-button to reopen overlay */
+#ts-mini-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 999999;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(0, 255, 136, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: tsMiniPop 0.3s ease-out;
+}
+
+#ts-mini-btn:hover {
+  transform: scale(1.15);
+  border-color: rgba(0, 255, 136, 0.6);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(0, 255, 136, 0.25);
+}
+
+@keyframes tsMiniPop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
