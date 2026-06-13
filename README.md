@@ -48,11 +48,8 @@ Algunos bots de tickets muestran un formulario emergente (modal) antes de comple
 ###  Notificaciones por Webhook
 Puedes conectar un webhook de Discord para recibir notificaciones cada vez que se reclame un ticket. También puedes generar reportes de actividad con estadísticas por servidor.
 
-###  Sonido de Notificación
-Cada vez que se reclama un ticket exitosamente, suena una notificación para que lo sepas aunque no estés viendo la pantalla. Se puede desactivar si prefieres silencio.
-
 ###  Overlay en Discord
-Al entrar a Discord, aparece una pequeña ventana flotante que muestra el estado de la extensión, el conteo de tickets reclamados y un registro de actividad en tiempo real. Puedes minimizarla, cerrarla por completo, o reabrirla con el ícono flotante 🎯.
+Al entrar a Discord, aparece una pequeña ventana flotante que muestra el estado de la extensión, el conteo de tickets reclamados y un registro de actividad en tiempo real. Puedes minimizarla, cerrarla por completo, o reabrirla con el ícono flotante con este emoji🎯.
 
 ## Cosas Importantes que Debes Saber
 
