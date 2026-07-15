@@ -37,7 +37,8 @@
     webhookUrl: document.getElementById('webhookUrl'),
     serverWhitelist: document.getElementById('serverWhitelist'),
     autoModalEnabled: document.getElementById('autoModalEnabled'),
-    autoModalMessage: document.getElementById('autoModalMessage')
+    autoModalMessage: document.getElementById('autoModalMessage'),
+    bypassStaffCheck: document.getElementById('bypassStaffCheck')
   };
 
   function loadSettings() {
@@ -57,7 +58,8 @@
       webhookUrl: '',
       serverWhitelist: [],
       autoModalEnabled: true,
-      autoModalMessage: 'Claiming ticket'
+      autoModalMessage: 'Claiming ticket',
+      bypassStaffCheck: false
     }, (data) => {
       el.enabledToggle.checked = data.enabled;
       el.claimCountStat.textContent = data.claimCount;
@@ -74,6 +76,7 @@
       el.serverWhitelist.value = data.serverWhitelist.join('\n');
       el.autoModalEnabled.checked = data.autoModalEnabled;
       el.autoModalMessage.value = data.autoModalMessage;
+      el.bypassStaffCheck.checked = data.bypassStaffCheck;
 
       updateStatus(data.enabled);
       renderTags();
@@ -193,7 +196,8 @@
       webhookUrl: el.webhookUrl.value.trim(),
       serverWhitelist,
       autoModalEnabled: el.autoModalEnabled.checked,
-      autoModalMessage: el.autoModalMessage.value
+      autoModalMessage: el.autoModalMessage.value,
+      bypassStaffCheck: el.bypassStaffCheck.checked
     }, () => showToast('💾 Hunter CONFIG SINCRONIZADA!'));
   });
 
@@ -214,7 +218,8 @@
       minDelay: 0.5, maxDelay: 2.0, soundEnabled: true,
       webhookUrl: '', serverWhitelist: [],
       autoModalEnabled: true, autoModalMessage: 'Claiming ticket',
-      claimsByServer: {}
+      claimsByServer: {},
+      bypassStaffCheck: false
     }, () => { loadSettings(); showToast('🔄 Hunter REINICIADO'); });
   });
 

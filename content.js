@@ -44,7 +44,8 @@
       useDefaultPatterns: true, useDefaultKeywords: true,
       minDelay: 0.5, maxDelay: 2.0, soundEnabled: true,
       serverWhitelist: [], autoModalEnabled: true, autoModalMessage: 'Claiming ticket',
-      webhookUrl: '', claimsByServer: {}
+      webhookUrl: '', claimsByServer: {},
+      bypassStaffCheck: false
     }, (d) => {
       BOTX_ACTIVE = d.enabled;
       claimCount = d.claimCount;
@@ -65,7 +66,8 @@
         webhookUrl: d.webhookUrl,
         serverWhitelist: d.serverWhitelist,
         autoModalEnabled: d.autoModalEnabled,
-        autoModalMessage: d.autoModalMessage
+        autoModalMessage: d.autoModalMessage,
+        bypassStaffCheck: d.bypassStaffCheck
       };
 
       updateOverlay();
@@ -134,8 +136,15 @@
       case 'staff-result':
         if (payload.guildId === currentGuildId) {
           isStaff = payload.isStaff;
-          if (isStaff) log('🛡️ Hunter STAFF VERIFICADO');
-          else log('⚠️ SIN ACCESO DE STAFF DETECTADO');
+          if (isStaff) {
+            log('🛡️ Hunter STAFF VERIFICADO');
+          } else if (window.atcSettings?.bypassStaffCheck) {
+            isStaff = true;
+            log('🔓 BYPASS STAFF ACTIVO (forzado)');
+          } else {
+            const diagMsg = payload.diag ? ` [${payload.diag}]` : '';
+            log(`⚠️ SIN ACCESO STAFF${diagMsg}`);
+          }
           updateOverlay();
         }
         break;
@@ -157,7 +166,7 @@
       send('check-staff', { guildId });
     }
 
-    if (!isStaff) return;
+    if (!isStaff && !window.atcSettings?.bypassStaffCheck) return;
 
     const whitelist = window.atcSettings?.serverWhitelist || [];
     if (whitelist.length > 0 && !whitelist.includes(guildId)) {

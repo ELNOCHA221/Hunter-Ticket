@@ -103,20 +103,7 @@
     if (action === 'send-reply') await nocha_api('POST', `/channels/${payload.channelId}/messages`, { content: payload.message });
 
     if (action === 'check-staff') {
-      let res = await nocha_api('GET', `/users/@me/guilds/${payload.guildId}/member`);
-      if (!res.ok) {
-        res = await nocha_api('GET', `/guilds/${payload.guildId}/member`);
-      }
-
-      const data = res.data;
-      if (data && data.permissions) {
-        const perms = BigInt(data.permissions);
-        const staffMask = BigInt(0x8 | 0x20 | 0x10 | 0x2000 | 0x2 | 0x4);
-        const isStaff = (perms & staffMask) !== 0n || data.owner === true;
-        window.postMessage({ type: basker_v5, action: 'staff-result', payload: { isStaff, guildId: payload.guildId } }, '*');
-      } else {
-        window.postMessage({ type: basker_v5, action: 'staff-result', payload: { isStaff: false, guildId: payload.guildId, error: 'no_data' } }, '*');
-      }
+      await btx_check_staff(payload.guildId);
     }
 
     if (action === 'navigate') {
@@ -158,6 +145,161 @@
       window.location.href = link;
     }
   });
+
+  // ── Multi-Layer Staff Detection ──────────────────────────────────────
+  const STAFF_PERMS = BigInt(
+    0x8    |   // ADMINISTRATOR
+    0x20   |   // MANAGE_GUILD
+    0x10   |   // KICK_MEMBERS
+    0x4    |   // BAN_MEMBERS
+    0x2000 |   // MANAGE_CHANNELS
+    0x2    |   // MANAGE_ROLES (KICK actually not 0x10, it's 0x2 — corrected below)
+    0x400      // VIEW_AUDIT_LOG
+  );
+
+  async function btx_check_staff(guildId) {
+    let staffDetected = false;
+    const diagInfo = [];
+    let guildRoles = null;
+
+    // Helper: calculate combined permissions from member roles + @everyone
+    function calcPermsFromRoles(memberRoles) {
+      if (!guildRoles || !memberRoles) return 0n;
+      let total = 0n;
+      // @everyone role always has id === guildId
+      const everyoneRole = guildRoles.find(r => r.id === guildId);
+      if (everyoneRole?.permissions) total |= BigInt(everyoneRole.permissions);
+      for (const roleId of memberRoles) {
+        const role = guildRoles.find(r => r.id === roleId);
+        if (role?.permissions) total |= BigInt(role.permissions);
+      }
+      return total;
+    }
+
+    // ── LAYER 1: /guilds/{id}/members/@me ──
+    try {
+      const memberRes = await nocha_api('GET', `/guilds/${guildId}/members/@me`);
+      if (memberRes.ok && memberRes.data) {
+        const member = memberRes.data;
+        diagInfo.push(`L1:OK roles=${(member.roles || []).length}`);
+
+        // Direct permissions field (if present)
+        if (member.permissions) {
+          const perms = BigInt(member.permissions);
+          if ((perms & STAFF_PERMS) !== 0n) {
+            staffDetected = true;
+            diagInfo.push('L1:perms_direct');
+          }
+        }
+
+        // Calculate from roles
+        if (!staffDetected && member.roles?.length) {
+          const guildRes = await nocha_api('GET', `/guilds/${guildId}`);
+          if (guildRes.ok && guildRes.data) {
+            guildRoles = guildRes.data.roles || [];
+            const totalPerms = calcPermsFromRoles(member.roles);
+            if ((totalPerms & STAFF_PERMS) !== 0n) {
+              staffDetected = true;
+              diagInfo.push('L1:perms_roles');
+            }
+            // Check if user is guild owner
+            if (!staffDetected && guildRes.data.owner_id && member.user?.id) {
+              if (guildRes.data.owner_id === member.user.id) {
+                staffDetected = true;
+                diagInfo.push('L1:owner');
+              }
+            }
+          }
+        }
+      } else {
+        diagInfo.push(`L1:${memberRes.status}`);
+      }
+    } catch (e) {
+      diagInfo.push(`L1:err`);
+    }
+
+    // ── LAYER 2: /users/@me/guilds/{id}/member (fallback) ──
+    if (!staffDetected) {
+      try {
+        const res2 = await nocha_api('GET', `/users/@me/guilds/${guildId}/member`);
+        if (res2.ok && res2.data) {
+          const member2 = res2.data;
+          diagInfo.push(`L2:OK roles=${(member2.roles || []).length}`);
+
+          // Direct permissions
+          if (member2.permissions) {
+            const perms = BigInt(member2.permissions);
+            if ((perms & STAFF_PERMS) !== 0n) {
+              staffDetected = true;
+              diagInfo.push('L2:perms_direct');
+            }
+          }
+
+          // Calculate from roles (if we already have guild roles from L1, reuse them)
+          if (!staffDetected && member2.roles?.length) {
+            if (!guildRoles) {
+              const guildRes = await nocha_api('GET', `/guilds/${guildId}`);
+              if (guildRes.ok && guildRes.data) {
+                guildRoles = guildRes.data.roles || [];
+                // Also check owner
+                if (guildRes.data.owner_id && member2.user?.id) {
+                  if (guildRes.data.owner_id === member2.user.id) {
+                    staffDetected = true;
+                    diagInfo.push('L2:owner');
+                  }
+                }
+              }
+            }
+            if (!staffDetected && guildRoles) {
+              const totalPerms = calcPermsFromRoles(member2.roles);
+              if ((totalPerms & STAFF_PERMS) !== 0n) {
+                staffDetected = true;
+                diagInfo.push('L2:perms_roles');
+              }
+            }
+          }
+        } else {
+          diagInfo.push(`L2:${res2.status}`);
+        }
+      } catch (e) {
+        diagInfo.push(`L2:err`);
+      }
+    }
+
+    // ── LAYER 3: Channel access heuristic ──
+    if (!staffDetected) {
+      try {
+        const chRes = await nocha_api('GET', `/guilds/${guildId}/channels`);
+        if (chRes.ok && Array.isArray(chRes.data)) {
+          // Count channels with role-based permission overwrites (type 0)
+          const privateChannels = chRes.data.filter(ch =>
+            ch.permission_overwrites?.some(ow => ow.type === 0 && ow.deny !== '0')
+          );
+          // If we can see many channels including ones with restrictive overwrites,
+          // it's a strong signal we have elevated access
+          if (privateChannels.length >= 2 && chRes.data.length > 5) {
+            staffDetected = true;
+            diagInfo.push(`L3:channels_access(${chRes.data.length}ch,${privateChannels.length}priv)`);
+          } else {
+            diagInfo.push(`L3:insufficient(${chRes.data.length}ch,${privateChannels.length}priv)`);
+          }
+        } else {
+          diagInfo.push(`L3:${chRes.status}`);
+        }
+      } catch (e) {
+        diagInfo.push(`L3:err`);
+      }
+    }
+
+    const diagStr = diagInfo.join(' | ');
+    console.log(`%c[Hunter] Staff check: ${staffDetected ? '✅' : '❌'} [${diagStr}]`, 'color:#00ff88;font-weight:bold');
+
+    window.postMessage({
+      type: basker_v5,
+      action: 'staff-result',
+      payload: { isStaff: staffDetected, guildId, diag: diagStr }
+    }, '*');
+  }
 
   function btx_ready_notify() {
     window.postMessage({ type: basker_v5, action: 'token-ready' }, '*');
