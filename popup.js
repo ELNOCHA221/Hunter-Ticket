@@ -38,7 +38,8 @@
     serverWhitelist: document.getElementById('serverWhitelist'),
     autoModalEnabled: document.getElementById('autoModalEnabled'),
     autoModalMessage: document.getElementById('autoModalMessage'),
-    bypassStaffCheck: document.getElementById('bypassStaffCheck')
+    bypassStaffCheck: document.getElementById('bypassStaffCheck'),
+    fastClaimEnabled: document.getElementById('fastClaimEnabled')
   };
 
   function loadSettings() {
@@ -59,7 +60,8 @@
       serverWhitelist: [],
       autoModalEnabled: true,
       autoModalMessage: 'Claiming ticket',
-      bypassStaffCheck: false
+      bypassStaffCheck: false,
+      fastClaimEnabled: false
     }, (data) => {
       el.enabledToggle.checked = data.enabled;
       el.claimCountStat.textContent = data.claimCount;
@@ -77,6 +79,7 @@
       el.autoModalEnabled.checked = data.autoModalEnabled;
       el.autoModalMessage.value = data.autoModalMessage;
       el.bypassStaffCheck.checked = data.bypassStaffCheck;
+      el.fastClaimEnabled.checked = data.fastClaimEnabled;
 
       updateStatus(data.enabled);
       renderTags();
@@ -197,8 +200,20 @@
       serverWhitelist,
       autoModalEnabled: el.autoModalEnabled.checked,
       autoModalMessage: el.autoModalMessage.value,
-      bypassStaffCheck: el.bypassStaffCheck.checked
-    }, () => showToast('💾 Hunter CONFIG SINCRONIZADA!'));
+      bypassStaffCheck: el.bypassStaffCheck.checked,
+      fastClaimEnabled: el.fastClaimEnabled.checked
+    }, () => {
+      showToast('💾 Hunter CONFIG SINCRONIZADA!');
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (tab.url && (tab.url.includes('discord.com') || tab.url.includes('discordapp.com'))) {
+            chrome.tabs.sendMessage(tab.id, { action: 'settings-updated' }, () => {
+              if (chrome.runtime.lastError) {}
+            });
+          }
+        });
+      });
+    });
   });
 
   el.clearLogBtn.addEventListener('click', () => {
@@ -219,8 +234,21 @@
       webhookUrl: '', serverWhitelist: [],
       autoModalEnabled: true, autoModalMessage: 'Claiming ticket',
       claimsByServer: {},
-      bypassStaffCheck: false
-    }, () => { loadSettings(); showToast('🔄 Hunter REINICIADO'); });
+      bypassStaffCheck: false,
+      fastClaimEnabled: false
+    }, () => {
+      loadSettings();
+      showToast('🔄 Hunter REINICIADO');
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (tab.url && (tab.url.includes('discord.com') || tab.url.includes('discordapp.com'))) {
+            chrome.tabs.sendMessage(tab.id, { action: 'settings-updated' }, () => {
+              if (chrome.runtime.lastError) {}
+            });
+          }
+        });
+      });
+    });
   });
 
   document.getElementById('testWebhookBtn').addEventListener('click', () => {

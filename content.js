@@ -10,8 +10,8 @@
   let claimKeywords = [];
 
   let btx_processed = new Set();
+  let btx_claiming = new Set();
   let currentGuildId = null;
-  let processing = false;
   let polling = false;
   let btx_ready = false;
   let isStaff = false;
@@ -45,7 +45,8 @@
       minDelay: 0.5, maxDelay: 2.0, soundEnabled: true,
       serverWhitelist: [], autoModalEnabled: true, autoModalMessage: 'Claiming ticket',
       webhookUrl: '', claimsByServer: {},
-      bypassStaffCheck: false
+      bypassStaffCheck: false,
+      fastClaimEnabled: false
     }, (d) => {
       BOTX_ACTIVE = d.enabled;
       claimCount = d.claimCount;
@@ -67,8 +68,24 @@
         serverWhitelist: d.serverWhitelist,
         autoModalEnabled: d.autoModalEnabled,
         autoModalMessage: d.autoModalMessage,
-        bypassStaffCheck: d.bypassStaffCheck
+        bypassStaffCheck: d.bypassStaffCheck,
+        fastClaimEnabled: d.fastClaimEnabled
       };
+
+      send('update-settings', {
+        enabled: d.enabled,
+        minDelay: d.minDelay,
+        maxDelay: d.maxDelay,
+        soundEnabled: d.soundEnabled,
+        webhookUrl: d.webhookUrl,
+        serverWhitelist: d.serverWhitelist,
+        autoModalEnabled: d.autoModalEnabled,
+        autoModalMessage: d.autoModalMessage,
+        bypassStaffCheck: d.bypassStaffCheck,
+        fastClaimEnabled: d.fastClaimEnabled,
+        channelPatterns,
+        claimKeywords
+      });
 
       updateOverlay();
     });
@@ -120,6 +137,11 @@
         }
         break;
 
+      case 'websocket-claiming':
+        btx_claiming.add(payload.channelId);
+        log(`⚡ RECLAMANDO INSTANTÁNEAMENTE VÍA WEBSOCKET...`, `https://discord.com/channels/${payload.guildId}/${payload.channelId}`);
+        break;
+
       case 'channels-result':
         polling = false;
         handleChannels(payload.channels);
@@ -160,6 +182,7 @@
     if (guildId !== currentGuildId) {
       currentGuildId = guildId;
       btx_processed.clear();
+      btx_claiming.clear();
       isStaff = false;
       log(`📡 ESCANEANDO SERVIDOR: ${guildId}`);
       updateOverlay();
@@ -202,7 +225,8 @@
   }
 
   function nocha_claim(channelId, guildId, name) {
-    if (processing === channelId) return;
+    if (btx_claiming.has(channelId) || btx_processed.has(channelId)) return;
+    btx_claiming.add(channelId);
 
     const minVal = window.atcSettings?.minDelay;
     const maxVal = window.atcSettings?.maxDelay;
@@ -237,6 +261,8 @@
 
   function handleClaimResult(payload) {
     const { success, channelId, buttonLabel, error, channelName } = payload;
+
+    btx_claiming.delete(channelId);
 
     if (success) {
       btx_processed.add(channelId);
@@ -284,12 +310,19 @@
         }, 2000);
       }
     } else {
-      if (payload.error === 'btn_not_found') { }
-      else {
+      const permanentErrors = ['already_claimed', 'api_error_400', 'api_error_401', 'api_error_403', 'api_error_404'];
+      const isPermanent = permanentErrors.includes(payload.error);
+
+      if (isPermanent) {
         btx_processed.add(channelId);
         let errorMsg = payload.error;
         if (errorMsg === 'already_claimed') errorMsg = 'TAKEN';
         log(`⚠️ #${channelName}: ${errorMsg}`);
+      } else {
+        let errorMsg = payload.error;
+        if (errorMsg !== 'btn_not_found') {
+          log(`⏳ #${channelName} reintento programado (${errorMsg})`);
+        }
       }
     }
   }
@@ -357,8 +390,13 @@
 
     document.getElementById('ts-toggle-btn').addEventListener('click', () => {
       BOTX_ACTIVE = !BOTX_ACTIVE;
-      if (chrome?.storage?.sync) chrome.storage.sync.set({ enabled: BOTX_ACTIVE });
-      updateOverlay();
+      if (chrome?.storage?.sync) {
+        chrome.storage.sync.set({ enabled: BOTX_ACTIVE }, () => {
+          loadSettings();
+        });
+      } else {
+        updateOverlay();
+      }
       log(BOTX_ACTIVE ? '✅ Hunter ACTIVO' : '⏸️ Hunter PAUSADO');
     });
 
@@ -490,6 +528,17 @@
     }, 1000);
 
     setTimeout(() => clearInterval(checkT), 30000);
+  }
+
+  if (chrome?.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'settings-updated') {
+        log('⚙️ Configuración actualizada desde el popup');
+        loadSettings();
+        sendResponse({ success: true });
+        return true;
+      }
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

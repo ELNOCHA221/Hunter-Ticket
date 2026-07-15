@@ -132,6 +132,16 @@
         <p class="input-hint">Ej: 0.1, 0.5, 1. Usar 0 para instantáneo.</p>
       </div>
 
+      <!-- Reclamado Rápido -->
+      <div class="setting-row" style="margin-top: 10px; margin-bottom: 10px;">
+        <label class="checkbox-label" style="font-weight: bold; color: #00ff88;">
+          <input type="checkbox" id="fastClaimEnabled">
+          <span class="checkmark"></span>
+          ⚡ Reclamado Rápido (WebSocket Instantáneo)
+        </label>
+        <p class="input-hint" style="color: #888;">Bypassea el delay normal y la API HTTP. Reclama en milisegundos usando WebSockets apenas se crea el ticket.</p>
+      </div>
+
       <!-- Whitelist -->
       <div class="setting-row">
         <label for="serverWhitelist">Whitelist Servidores (IDs, uno por línea)</label>

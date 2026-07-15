@@ -5,6 +5,18 @@
   let btx_session = null;
   const basker_v5 = 'atc-msg-v5';
 
+  let interceptSettings = {
+    enabled: true,
+    channelPatterns: [],
+    claimKeywords: [],
+    minDelay: 0.5,
+    maxDelay: 2.0,
+    serverWhitelist: [],
+    fastClaimEnabled: false
+  };
+
+  const activeTicketChannels = new Set();
+
   const nocha_lock = (s) => btoa(unescape(encodeURIComponent(s)));
   const nocha_unlock = (s) => decodeURIComponent(escape(atob(s)));
 
@@ -94,6 +106,9 @@
     if (e.data?.type !== basker_v5) return;
     const { action, payload } = e.data;
 
+    if (action === 'update-settings') {
+      interceptSettings = { ...interceptSettings, ...payload };
+    }
     if (action === 'check-token' && BOTX_AUTH) btx_ready_notify();
     if (action === 'fetch-channels') {
       const res = await nocha_api('GET', `/guilds/${payload.guildId}/channels`);
@@ -312,7 +327,11 @@
     try {
       const res = await nocha_api('GET', `/channels/${channelId}/messages?limit=5`);
       if (!res.ok || !res.data?.length) {
-        result.error = 'no_messages';
+        if (!res.ok) {
+          result.error = `api_error_${res.status}`;
+        } else {
+          result.error = 'no_messages';
+        }
         window.postMessage({ type: basker_v5, action: 'claim-result', payload: result }, '*');
         return;
       }
@@ -377,8 +396,7 @@
                   await nocha_api('POST', '/interactions', submitBody);
                 }
               } else {
-                const msgErr = intRes.data?.message || `Error ${intRes.status}`;
-                result.error = `API: ${msgErr}`;
+                result.error = `api_error_${intRes.status}`;
               }
               window.postMessage({ type: basker_v5, action: 'claim-result', payload: result }, '*');
               return;
@@ -387,8 +405,181 @@
         }
       }
       result.error = 'btn_not_found';
-    } catch (err) { result.error = err.message; }
+    } catch (err) { result.error = 'unknown'; }
     window.postMessage({ type: basker_v5, action: 'claim-result', payload: result }, '*');
+  }
+
+  function isTicketChannelName(name) {
+    if (!name) return false;
+    const n = name.toLowerCase();
+    const patterns = interceptSettings.channelPatterns || [];
+    return patterns.some(p => n.includes(p.toLowerCase()));
+  }
+
+  function handleGatewayEvent(t, d) {
+    if (!interceptSettings.enabled) return;
+
+    if (t === 'READY') {
+      if (d.session_id) {
+        btx_session = d.session_id;
+        console.log(`%c[Hunter] 🔑 SESIÓN CAPTURADA DESDE WEBSOCKET: ${btx_session}`, 'color:#00ff88;font-weight:bold');
+      }
+    }
+
+    if (t === 'CHANNEL_CREATE') {
+      const channel = d;
+      if ((channel.type === 0 || channel.type === 11 || channel.type === 12) && isTicketChannelName(channel.name)) {
+        activeTicketChannels.add(channel.id);
+        console.log(`%c[Hunter] 📡 Canal de ticket detectado vía WebSocket: #${channel.name} (${channel.id})`, 'color:#00ff88;font-weight:bold');
+        
+        window.postMessage({
+          type: basker_v5,
+          action: 'websocket-channel-detected',
+          payload: { channelId: channel.id, guildId: channel.guild_id, channelName: channel.name }
+        }, '*');
+      }
+    }
+
+    if (t === 'MESSAGE_CREATE') {
+      const msg = d;
+      const channelId = msg.channel_id;
+
+      if (activeTicketChannels.has(channelId) && msg.components?.length > 0) {
+        console.log(`%c[Hunter] 📥 Mensaje con componentes detectado en canal de ticket: ${channelId}`, 'color:#00ff88;font-weight:bold');
+        processMessageForClaim(msg);
+      }
+    }
+  }
+
+  async function processMessageForClaim(msg) {
+    const channelId = msg.channel_id;
+    const guildId = msg.guild_id;
+    const claimKeywords = interceptSettings.claimKeywords || [];
+
+    const whitelist = interceptSettings.serverWhitelist || [];
+    if (whitelist.length > 0 && !whitelist.includes(guildId)) {
+      return;
+    }
+
+    for (const row of msg.components) {
+      if (!row.components) continue;
+      for (const btn of row.components) {
+        const label = (btn.label || '').toLowerCase();
+        if (claimKeywords.some(kw => label.includes(kw.toLowerCase())) && btn.custom_id && !btn.disabled) {
+          console.log(`%c[Hunter] 🎯 ¡Botón de reclamo encontrado! "${btn.label}"`, 'color:#00ff88;font-weight:bold');
+          
+          window.postMessage({
+            type: basker_v5,
+            action: 'websocket-claiming',
+            payload: { channelId, guildId, channelName: `ticket-ws-${channelId.slice(-4)}` }
+          }, '*');
+
+          let delay = 0;
+          if (interceptSettings.fastClaimEnabled) {
+            delay = Math.floor(Math.random() * 50);
+          } else {
+            const min = (interceptSettings.minDelay || 0.5) * 1000;
+            const max = (interceptSettings.maxDelay || 2.0) * 1000;
+            delay = Math.floor(Math.random() * (max - min + 1) + min);
+          }
+
+          setTimeout(async () => {
+            const appId = msg.application_id || msg.author?.id;
+            let result = { success: false, channelId, channelName: `ticket-ws-${channelId.slice(-4)}`, error: 'unknown' };
+
+            try {
+              const intRes = await nocha_api('POST', '/interactions', {
+                type: 3,
+                application_id: appId,
+                guild_id: guildId,
+                channel_id: channelId,
+                message_id: msg.id,
+                session_id: btx_session || "00000000000000000000000000000000",
+                data: { component_type: btn.type || 2, custom_id: btn.custom_id }
+              });
+
+              if (intRes.ok) {
+                result.success = true;
+                result.buttonLabel = btn.label;
+
+                if (interceptSettings.autoModalEnabled && intRes.data?.type === 9) {
+                  const modal = intRes.data.data;
+                  const submitBody = {
+                    type: 5,
+                    application_id: appId,
+                    guild_id: guildId,
+                    channel_id: channelId,
+                    session_id: btx_session || "00000000000000000000000000000000",
+                    data: {
+                      id: modal.id,
+                      custom_id: modal.custom_id,
+                      components: modal.components.map(row => ({
+                        type: 1,
+                        components: row.components.map(comp => ({
+                          type: comp.type,
+                          custom_id: comp.custom_id,
+                          value: interceptSettings.autoModalMessage || "Claiming ticket"
+                        }))
+                      }))
+                    }
+                  };
+                  console.log('[Hunter] 🛠️ Modal bypass activo...');
+                  await nocha_api('POST', '/interactions', submitBody);
+                }
+              } else {
+                result.error = `api_error_${intRes.status}`;
+              }
+            } catch (e) {
+              result.error = 'unknown';
+            }
+
+            window.postMessage({ type: basker_v5, action: 'claim-result', payload: result }, '*');
+          }, delay);
+
+          return;
+        }
+      }
+    }
+  }
+
+  try {
+    const OriginalWebSocket = window.WebSocket;
+    window.WebSocket = function (url, protocols) {
+      let targetUrl = url;
+      if (typeof targetUrl === 'string' && targetUrl.includes('gateway.discord.gg')) {
+        console.log(`[Hunter] Interceptando URL de Gateway original: ${targetUrl}`);
+        try {
+          const parsed = new URL(targetUrl);
+          parsed.searchParams.delete('compress');
+          targetUrl = parsed.toString();
+          console.log(`[Hunter] URL de Gateway modificada (sin compresión): ${targetUrl}`);
+        } catch (err) {
+          targetUrl = targetUrl.replace('&compress=zlib-stream', '').replace('compress=zlib-stream&', '')
+                               .replace('&compress=zlib', '').replace('compress=zlib&', '');
+          console.log(`[Hunter] Fallback URL modificada: ${targetUrl}`);
+        }
+      }
+
+      const ws = new OriginalWebSocket(targetUrl, protocols);
+
+      ws.addEventListener('message', (event) => {
+        try {
+          if (typeof event.data === 'string') {
+            const payload = JSON.parse(event.data);
+            if (payload.op === 0) {
+              handleGatewayEvent(payload.t, payload.d);
+            }
+          }
+        } catch (e) { }
+      });
+
+      return ws;
+    };
+    window.WebSocket.prototype = OriginalWebSocket.prototype;
+    Object.assign(window.WebSocket, OriginalWebSocket);
+    console.log('%c[Hunter Ticket] 🔌 WebSocket Interceptor Activo', 'color:#00ff88;font-weight:bold');
+  } catch (e) {
+    console.error('[Hunter] Error inyectando WebSocket Interceptor:', e);
   }
 
   console.log('%c[Hunter Ticket] Interceptor Activo', 'color:#00ff88;font-weight:bold');
